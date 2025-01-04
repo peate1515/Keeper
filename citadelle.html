@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choix des Joueurs - Citadelle</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        #selectedPlayers {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .player {
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .player:hover {
+            background-color: #d1ecf1;
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body>
+    <h1>Choisissez vos joueurs</h1>
+    <p>Sélectionnez entre 1 et 6 joueurs.</p>
+
+    <div id="selectedPlayers">
+        <h2>Joueurs sélectionnés :</h2>
+        <ul id="selectedPlayersList">
+            <!-- Liste des joueurs sélectionnés affichée ici -->
+        </ul>
+    </div>
+
+    <div id="playerList">
+        <!-- Les joueurs seront ajoutés ici dynamiquement -->
+    </div>
+
+    <script>
+        const players = [
+            { id: 1, name: "Connor Wong", position: "C,1B", team: "Boston Red Sox", round: 20, value: 20.1, eligible: true },
+            { id: 2, name: "Ryan McMahon", position: "3B,2B", team: "Colorado Rockies", round: 20, value: 20.2, eligible: true },
+            { id: 3, name: "Marcell Ozuna", position: "DH", team: "Atlanta Braves", round: 20, value: 20.3, eligible: true },
+            { id: 4, name: "Coby Mayo", position: "1B,DH", team: "Baltimore Orioles", round: 20, value: 20.4, eligible: true },
+            { id: 5, name: "Ryan Mountcastle", position: "1B,DH", team: "Baltimore Orioles", round: 20, value: 20.5, eligible: true },
+            { id: 6, name: "Jack Flaherty", position: "SP", team: "Free Agent", round: 20, value: 20.6, eligible: true },
+            { id: 7, name: "Mackenzie Gore", position: "SP", team: "Washington Nationals", round: 20, value: 20.7, eligible: true },
+            { id: 8, name: "Jeff Hoffman", position: "RP", team: "Free Agent", round: 20, value: 20.8, eligible: true },
+            { id: 9, name: "Sandy Alcantara", position: "SP", team: "Miami Marlins", round: 19, value: 19, eligible: true },
+            { id: 10, name: "Luis Garcia JR", position: "2B", team: "Washington Nationals", round: 15, value: 15.1, eligible: true },
+            { id: 11, name: "Ezequiel Tovar", position: "SS", team: "Colorado Rockies", round: 15, value: 15.2, eligible: true },
+            { id: 12, name: "Willi Castro", position: "OF,2B,3B,SS", team: "Minnesota Twins", round: 15, value: 15.3, eligible: true },
+            { id: 13, name: "Jesse Winker", position: "DH,OF", team: "Free Agent", round: 15, value: 15.4, eligible: true },
+            { id: 14, name: "Jacob Young", position: "OF", team: "Washington Nationals", round: 15, value: 15.5, eligible: true },
+            { id: 15, name: "Kodai Senga", position: "SP", team: "New York Mets", round: 12, value: 12, eligible: true },
+            { id: 16, name: "Ryan Helsey", position: "RP", team: "St.Louis Cardinals", round: 11, value: 11, eligible: true },
+            { id: 17, name: "Junior Caminero", position: "3B,SS", team: "Tampa Bay Rays", round: 10, value: 10, eligible: true },
+            { id: 18, name: "Christian Walker", position: "1B", team: "Houston Astros", round: 9, value: 9, eligible: true },
+            { id: 19, name: "George Kirby", position: "SP", team: "Seattle Marines", round: 8, value: 8, eligible: true },
+            { id: 20, name: "Wyatt Langford", position: "OF,DH", team: "Texas Rangers", round: 7, value: 7, eligible: true },
+            { id: 21, name: "Alex Bregman", position: "3B", team: "Free Agent", round: 6, value: 6, eligible: true },
+            { id: 22, name: "Zac Gallen", position: "SP", team: "Arizona Diamondbacks", round: 4, value: 4, eligible: true },
+            { id: 23, name: "Luis Robert Jr", position: "OF", team: "Chicago White Sox", round: 3, value: 3.1, eligible: true },
+            { id: 24, name: "Bo Bichette", position: "SS", team: "Toronto Blue Jays", round: 3, value: 3.2, eligible: true },
+            { id: 25, name: "Jackson Holliday", position: "SS,2B", team: "Baltimore Orioles", round: 2, value: 2, eligible: true },
+            { id: 26, name: "Yordan Alvarez", position: "OF,DH", team: "Houston Astros", round: 1, value: 1, eligible: true }
+        ];
+
+        const playerList = document.getElementById("playerList");
+        const selectedPlayersList = document.getElementById("selectedPlayersList");
+        let selectedPlayers = [];
+
+        function renderPlayers() {
+            playerList.innerHTML = "";
+            players.forEach(player => {
+                const playerDiv = document.createElement("div");
+                playerDiv.className = "player" + (player.eligible ? "" : " non-eligible");
+                playerDiv.innerHTML = `
+                    <span>${player.name} (${player.position}, ${player.team}) ${player.eligible ? `(Round: ${player.round})` : "Non-éligible"}</span>
+                `;
+
+                if (player.eligible) {
+                    playerDiv.addEventListener("click", () => togglePlayerSelection(player, playerDiv));
+                }
+
+                playerList.appendChild(playerDiv);
+            });
+        }
+
+        function togglePlayerSelection(player, playerDiv) {
+            if (selectedPlayers.includes(player.id)) {
+                selectedPlayers = selectedPlayers.filter(id => id !== player.id);
+                playerDiv.classList.remove("selected");
+            } else if (selectedPlayers.length < 6) {
+                selectedPlayers.push(player.id);
+                playerDiv.classList.add("selected");
+            }
+
+            updateSelectedPlayersDisplay();
+        }
+
+        function updateSelectedPlayersDisplay() {
+            selectedPlayersList.innerHTML = "";
+            const groupedByRound = selectedPlayers.map(id => players.find(p => p.id === id))
+                .sort((a, b) => a.round - b.round || a.value - b.value);
+
+            let usedRounds = {}; // Tracks used rounds
+
+            groupedByRound.forEach(player => {
+                let adjustedRound = player.round;
+
+                // Adjust the round if it's already used
+                while (usedRounds[adjustedRound]) {
+                    adjustedRound += 1;
+                }
+
+                player.adjustedRound = adjustedRound;
+                usedRounds[adjustedRound] = true; // Mark this round as used
+            });
+
+            groupedByRound.forEach(player => {
+                const li = document.createElement("li");
+                li.textContent = `${player.name} (${player.position}, ${player.team}) (Round: ${player.adjustedRound})`;
+                selectedPlayersList.appendChild(li);
+            });
+        }
+
+        renderPlayers();
+    </script>

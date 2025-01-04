@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choix des Joueurs - Autre Équipe</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        #selectedPlayers {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .player {
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .player:hover {
+            background-color: #d1ecf1;
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body>
+    <h1>Choisissez vos joueurs</h1>
+    <p>Sélectionnez entre 1 et 6 joueurs.</p>
+
+    <div id="selectedPlayers">
+        <h2>Joueurs sélectionnés :</h2>
+        <ul id="selectedPlayersList">
+            <!-- Liste des joueurs sélectionnés affichée ici -->
+        </ul>
+    </div>
+
+    <div id="playerList">
+        <!-- Les joueurs seront ajoutés ici dynamiquement -->
+    </div>
+
+    <script>
+        const players = [
+            { id: 1, name: "Jorge Soler", position: "OF,DH", team: "Los Angeles Angels", eligible: false },
+            { id: 2, name: "Tylor Megill", position: "SP", team: "New Yorks Mets", eligible: false },
+            { id: 3, name: "Ryan Weathers", position: "SP", team: "Miami Marlins", eligible: false },
+            { id: 4, name: "Yu Darvish", position: "SP", team: "San Diego Padres", eligible: false },
+            { id: 5, name: "David Robertson", position: "RP", team: "Texas Rangers", round: 23, eligible: true },
+            { id: 6, name: "Jackson Merrill", position: "SS,OF", team: "Colorado Rockies", round: 20, value: 20.2, eligible: true },
+            { id: 7, name: "Ronel Blanco", position: "SP,RP", team: "Houston Astros", round: 20, value: 20.3, eligible: true },
+            { id: 8, name: "Hunter Greene", position: "SP", team: "Cincinnati Reds", round: 20, value: 20.4, eligible: true },
+            { id: 9, name: "Brady Singer", position: "SP", team: "Cincinnati Reds", round: 20, value: 20.5, eligible: true },
+            { id: 10, name: "Sonny Gray", position: "SP", team: "St.Louis Cardinals", round: 20, value: 20.1, eligible: true },
+            { id: 11, name: "Mason Miller", position: "RP", team: "Sacramento A'S", round: 18, eligible: true },
+            { id: 12, name: "Alec Burleson", position: "OF,1B,DH", team: "St.Louis Cardinals", round: 15, value: 15.1, eligible: true },
+            { id: 13, name: "Brent Rooker", position: "OF,DH", team: "Sacramento A'S", round: 15, value: 15.2, eligible: true },
+            { id: 14, name: "Merrill Kelly", position: "SP", team: "Arizona Diamondbacks", round: 12, eligible: true },
+            { id: 15, name: "Anthony Santander", position: "OF,DH", team: "Free Agent", round: 11, value: 11.2, eligible: true },
+            { id: 16, name: "Christian Yelich", position: "OF,DH", team: "Milwaukee Brewers", round: 11, value: 11.1, eligible: true },
+            { id: 17, name: "Andre Gimenez", position: "2B", team: "Toronto Blue Jays", round: 10, value: 10.1, eligible: true },
+            { id: 18, name: "Josh Lowe", position: "OF,DH", team: "Tampa Bay Rays", round: 10, value: 10.2, eligible: true },
+            { id: 19, name: "JJ Bleday", position: "OF", team: "Sacramento A'S", round: 10, value: 10.3, eligible: true },
+            { id: 20, name: "Rhett Lowder", position: "SP", team: "Cincinnati Reds", round: 10, value: 10.4, eligible: true },
+            { id: 21, name: "Jose Quintana", position: "SP", team: "Free Agent", round: 10, value: 10.5, eligible: true },
+            { id: 22, name: "Ha-Seong Kim", position: "2B,3B,SS", team: "Free Agent", round: 9, value: 9.1, eligible: true },
+            { id: 23, name: "Shota Imanaga", position: "SP", team: "Chicago Cubs", round: 9, value: 9.2, eligible: true },
+            { id: 24, name: "Yandy Diaz", position: "1B,DH", team: "Tampa Bay Rays", round: 8, eligible: true },
+            { id: 25, name: "Adley Rutschman", position: "C,DH", team: "Baltimore Orioles", round: 3, value: 3.2, eligible: true },
+            { id: 26, name: "Marcus Semiens", position: "2B", team: "Texas Rangers", round: 3, value: 3.1, eligible: true },
+            { id: 27, name: "Randy Arozarena", position: "OF", team: "Seattle Mariners", round: 3, value: 3.3, eligible: true },
+            { id: 28, name: "Yoshinobu Yamamoto", position: "SP", team: "Los Angeles Dodgers", round: 2, eligible: true },
+            { id: 29, name: "Jose Ramirez", position: "3B,DH", team: "Cleveland Guardian", round: 1, eligible: true }
+        ];
+
+        const playerList = document.getElementById("playerList");
+        const selectedPlayersList = document.getElementById("selectedPlayersList");
+        let selectedPlayers = [];
+
+        function renderPlayers() {
+            playerList.innerHTML = "";
+            players.forEach(player => {
+                const playerDiv = document.createElement("div");
+                playerDiv.className = "player" + (player.eligible ? "" : " non-eligible");
+                playerDiv.innerHTML = `
+                    <span>${player.name} (${player.position}, ${player.team}) ${player.eligible ? `(Round: ${player.round})` : "Non-éligible"}</span>
+                `;
+
+                if (player.eligible) {
+                    playerDiv.addEventListener("click", () => togglePlayerSelection(player, playerDiv));
+                }
+
+                playerList.appendChild(playerDiv);
+            });
+        }
+
+        function togglePlayerSelection(player, playerDiv) {
+            if (selectedPlayers.includes(player.id)) {
+                selectedPlayers = selectedPlayers.filter(id => id !== player.id);
+                playerDiv.classList.remove("selected");
+            } else if (selectedPlayers.length < 6) {
+                selectedPlayers.push(player.id);
+                playerDiv.classList.add("selected");
+            }
+
+            updateSelectedPlayersDisplay();
+        }
+
+        function updateSelectedPlayersDisplay() {
+            selectedPlayersList.innerHTML = "";
+            const groupedByRound = selectedPlayers.map(id => players.find(p => p.id === id))
+                .sort((a, b) => a.round - b.round || a.value - b.value);
+
+            let usedRounds = {}; // Tracks used rounds
+
+            groupedByRound.forEach(player => {
+                let adjustedRound = player.round;
+
+                // Adjust the round if it's already used
+                while (usedRounds[adjustedRound]) {
+                    adjustedRound += 1;
+                }
+
+                player.adjustedRound = adjustedRound;
+                usedRounds[adjustedRound] = true; // Mark this round as used
+            });
+
+            groupedByRound.forEach(player => {
+                const li = document.createElement("li");
+                li.textContent = `${player.name} (${player.position}, ${player.team}) (Round: ${player.adjustedRound})`;
+                selectedPlayersList.appendChild(li);
+            });
+        }
+
+        renderPlayers();
+    </script>
+</body>
+</html>
+
+
