@@ -1,119 +1,107 @@
 /* Styles généraux */
 body {
-    font-family: 'Roboto', sans-serif;
+    font-family: 'Arial', sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f9; /* Arrière-plan doux */
-    color: #333; /* Texte neutre */
+    background: linear-gradient(to bottom, #f4f4f9, #ffffff);
+    color: #333;
     line-height: 1.6;
 }
 
-h1 {
-    background-color: #00509e; /* Bleu vif */
-    color: #fff;
+/* Header */
+header {
+    text-align: center;
     padding: 20px;
-    margin: 0;
-    text-align: center;
+    background: #00509e;
+    color: white;
+    font-size: 1.8em;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-p {
-    text-align: center;
-    font-size: 1.1em;
-    margin: 10px 0;
+/* Bouton retour */
+button.back-button {
+    margin: 20px;
+    padding: 12px 25px;
+    font-size: 1em;
+    background-color: #00509e;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Section des joueurs sélectionnés */
+button.back-button:hover {
+    background-color: #003366;
+    transform: translateY(-3px);
+}
+
+/* Joueurs sélectionnés */
 #selectedPlayers {
-    margin: 20px auto;
-    padding: 15px;
-    border: 2px solid #00509e;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
     border-radius: 8px;
-    background-color: #eaf4ff;
-    max-width: 600px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 #selectedPlayers h2 {
-    margin: 0 0 10px;
+    margin-top: 0;
     color: #00509e;
-}
-
-#selectedPlayersList {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-#selectedPlayersList li {
-    padding: 10px;
-    border-bottom: 1px solid #ccc;
-    color: #333;
-}
-
-#selectedPlayersList li:last-child {
-    border-bottom: none;
+    text-align: center;
 }
 
 /* Liste des joueurs */
 #playerList {
-    max-width: 800px;
     margin: 20px auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+#playerList .player {
     padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background-color: #fff;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Style pour chaque joueur */
-.player {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    margin-bottom: 10px;
     border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.player:hover {
-    transform: translateY(-3px);
+    border-radius: 8px;
+    background: #fff;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.player.non-eligible {
-    background-color: #ffe6e6;
-    border: 2px dashed #ff0000;
-    color: #990000;
-    opacity: 0.8;
-    pointer-events: none;
-    font-weight: bold;
-}
-
-.player.selected {
-    background-color: #d1ecf1;
-    border-color: #0c5460;
-}
-
-/* Boutons */
-.button {
-    padding: 10px 20px;
-    font-size: 1em;
-    color: #fff;
-    background-color: #00509e;
-    border: none;
-    border-radius: 5px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
     cursor: pointer;
-    transition: background-color 0.3s ease;
 }
 
-.button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
+#playerList .player:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
-.button:hover:not(:disabled) {
-    background-color: #0074d9;
+#playerList .player.non-eligible {
+    background: #f8d7da;
+    color: #721c24;
+    pointer-events: none;
+    border: 1px solid #f5c6cb;
+}
+
+#playerList .player.selected {
+    border: 2px solid #28a745;
+    background: #e0ffe0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    body {
+        font-size: 0.9em;
+    }
+
+    #playerList {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    button.back-button {
+        width: 100%;
+        margin: 10px auto;
+    }
 }

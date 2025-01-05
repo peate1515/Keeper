@@ -3,29 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Choix des Joueurs - Autre Équipe</title>
+    <title>Choix des Joueurs - Coco</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        #selectedPlayers {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: #ffffff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .player {
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-        .player:hover {
-            background-color: #d1ecf1;
-            transform: scale(1.02);
-        }
-    </style>
 </head>
 <body>
-    <h1>Choisissez vos joueurs</h1>
-    <p>Sélectionnez entre 1 et 6 joueurs.</p>
+    <header>
+        <h1>Choisissez vos joueurs - Coco Laboy</h1>
+    </header>
+    <button onclick="location.href='index.html';" class="back-button">Retour à l'accueil</button>
 
     <div id="selectedPlayers">
         <h2>Joueurs sélectionnés :</h2>
@@ -80,9 +65,7 @@
             players.forEach(player => {
                 const playerDiv = document.createElement("div");
                 playerDiv.className = "player" + (player.eligible ? "" : " non-eligible");
-                playerDiv.innerHTML = `
-                    <span>${player.name} (${player.position}, ${player.team}) ${player.eligible ? `(Round: ${player.round})` : "Non-éligible"}</span>
-                `;
+                playerDiv.innerHTML = `<span>${player.name} (${player.position}, ${player.team}) ${player.eligible ? `(Round: ${player.round})` : "Non-éligible"}</span>`;
 
                 if (player.eligible) {
                     playerDiv.addEventListener("click", () => togglePlayerSelection(player, playerDiv));
@@ -134,5 +117,3 @@
     </script>
 </body>
 </html>
-
-
