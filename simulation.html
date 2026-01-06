@@ -3,34 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Keepers — Par équipe</title>
+  <title>Keepers — Simulation Draft</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header>
-    <h1>Keepers — <span id="pageTeamName">…</span></h1>
+    <h1>Keepers — Simulation Draft</h1>
   </header>
 
   <button onclick="location.href='index.html';" class="back-button">Retour à l'accueil</button>
 
-  <!-- ✅ Section sticky: sélection -->
-  <div id="selectedPlayers">
-    <h2>Joueurs sélectionnés (max 6)</h2>
-    <button id="resetBtn" class="reset-button">Réinitialiser la sélection</button>
-    <div class="selected-info" id="selectedInfo">Chargement…</div>
-    <ul id="selectedPlayersList"></ul>
-  </div>
-
-  <!-- ✅ Logger -->
   <div id="logger" class="logger hidden"></div>
 
-  <!-- ✅ Onglets équipes -->
-  <div id="teamTabsWrap">
-    <div id="teamTabs"></div>
-  </div>
+  <div class="sim-layout">
+    <aside class="sim-left">
+      <div class="panel">
+        <h2 class="panel-title">Équipes</h2>
+        <div id="teamTabs"></div>
+      </div>
 
-  <!-- ✅ Liste des joueurs -->
-  <div id="playerList"></div>
+      <div class="panel">
+        <h2 class="panel-title">Keepers sélectionnés — <span id="teamLabel"></span></h2>
+        <div class="selected-info" id="selectedInfo">Chargement…</div>
+        <button id="resetTeamBtn" class="reset-button">Réinitialiser l’équipe</button>
+        <ul id="selectedPlayersList"></ul>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Roster — <span id="teamLabel2"></span></h2>
+        <div id="playerList"></div>
+      </div>
+    </aside>
+
+    <main class="sim-right">
+      <div class="panel">
+        <div class="board-head">
+          <h2 class="panel-title" style="margin:0;">Draft Board (Keepers)</h2>
+          <div class="board-actions">
+            <button id="lockBoardBtn" class="lock-button" aria-pressed="false">🔓 Board déverrouillé</button>
+            <button id="resetAllBtn" class="reset-button">Réinitialiser tout</button>
+          </div>
+        </div>
+
+        <div class="board-wrap" id="boardWrap">
+          <table id="draftBoard" class="draft-board"></table>
+        </div>
+
+        <div class="board-legend">
+          <span class="legend-item"><span class="dot drafted"></span> Repêché</span>
+          <span class="legend-item"><span class="dot fa"></span> Agent libre</span>
+          <span class="legend-item"><span class="dot sel"></span> Keeper placé</span>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <!-- SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -43,12 +69,18 @@
     const TEAMS_PATH = "equipe.xlsx";
     const FIRST_GAME_TIME = "13:00";
     const MAX_KEEPERS = 6;
+    const ROUNDS = 26;
+
+    // ✅ Ordre des colonnes demandé
+    const TEAM_COLUMN_ORDER = [9, 2, 6, 3, 1, 4, 7, 8, 10, 5];
+
+    // storage
+    const LOCK_KEY = "keepers_sim_board_locked_v1";
 
     // =========================================================
     // TEAM NAMES
     // =========================================================
     let teamNameById = new Map();
-
     function teamName(teamId){
       return teamNameById.get(Number(teamId)) || `Équipe ${teamId}`;
     }
@@ -80,7 +112,6 @@
     // =========================================================
     const loggerEl = document.getElementById("logger");
     let loggerTimeout = null;
-
     function logMessage(message, type = "warn", duration = 4500){
       if (!loggerEl) return;
       loggerEl.textContent = message;
@@ -91,7 +122,7 @@
     }
 
     // =========================================================
-    // Helpers parsing
+    // Helpers
     // =========================================================
     function parseExcelDate(v) {
       if (v == null || v === "") return null;
@@ -104,7 +135,6 @@
       const d = new Date(v);
       return isNaN(d.getTime()) ? null : d;
     }
-
     function parseTimeToMinutes(t) {
       if (t == null || t === "") return null;
       if (t instanceof Date) return t.getHours() * 60 + t.getMinutes();
@@ -116,12 +146,10 @@
       }
       return null;
     }
-
     function firstGameMinutes() {
       const [h, m] = FIRST_GAME_TIME.split(":").map(Number);
       return h * 60 + m;
     }
-
     function fmtDate(d){
       if (!d) return "—";
       const y=d.getFullYear();
@@ -135,7 +163,6 @@
       const m=String(min%60).padStart(2,"0");
       return `${h}:${m}`;
     }
-
     function escapeHtml(s){
       return String(s ?? "").replace(/[&<>"']/g, c => ({
         '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -151,11 +178,9 @@
       if (roundNum >= 4 && roundNum <= 9) return 1;
       return 0;
     }
-
     function keeperRoundForDrafted(roundNum){
       return Math.max(1, roundNum - draftedBonus(roundNum));
     }
-
     function keeperRoundForFreeAgent(selDate, selTimeMin, fgMin){
       if (!selDate) return null;
 
@@ -187,24 +212,27 @@
     }
 
     // =========================================================
-    // App state
+    // Data + State
     // =========================================================
     let players = [];
-    let teams = [];
-    let currentTeam = null;
+    let teamsInFile = [];
+    let boardTeams = [];
+    let currentTeam = 1;
 
-    const playerList = document.getElementById("playerList");
-    const selectedPlayersList = document.getElementById("selectedPlayersList");
-    const selectedInfo = document.getElementById("selectedInfo");
-    const teamTabs = document.getElementById("teamTabs");
-    const pageTeamNameEl = document.getElementById("pageTeamName");
+    let selectionsByTeam = {};
+    let boardLocked = false;
 
-    let selectedPlayers = [];
+    const teamTabsEl = document.getElementById("teamTabs");
+    const playerListEl = document.getElementById("playerList");
+    const selectedPlayersListEl = document.getElementById("selectedPlayersList");
+    const selectedInfoEl = document.getElementById("selectedInfo");
+    const teamLabelEl = document.getElementById("teamLabel");
+    const teamLabel2El = document.getElementById("teamLabel2");
+    const draftBoardEl = document.getElementById("draftBoard");
 
     function isDrafted(p){
       return p.rank !== "" && p.rank != null;
     }
-
     function computeKeeperRound(p){
       const fgMin = firstGameMinutes();
       if (isDrafted(p)){
@@ -239,59 +267,63 @@
       p.type = isDrafted(p) ? "Repêché" : "Agent libre";
       p.keeperBase = computeKeeperRound(p);
       p.eligible = (p.keeperBase != null);
-      p.keeperAdjusted = null;
-
       return p;
     }
 
     function rebuildTeams(){
-      teams = Array.from(new Set(players.map(p=>p.team))).sort((a,b)=>a-b);
-      if (teams.length && currentTeam == null) currentTeam = teams[0];
+      teamsInFile = Array.from(new Set(players.map(p=>p.team))).sort((a,b)=>a-b);
+
+      boardTeams = TEAM_COLUMN_ORDER.filter(t => teamsInFile.includes(t));
+      const missing = teamsInFile.filter(t => !boardTeams.includes(t));
+      boardTeams = boardTeams.concat(missing).slice(0, 10);
+
+      currentTeam = boardTeams.length ? boardTeams[0] : (teamsInFile[0] || 1);
     }
-
-    function selectionKey(teamId){
-      return `keepers_selected_team_${teamId}`;
-    }
-
-    function loadSelection(teamId){
-      try{
-        const raw = localStorage.getItem(selectionKey(teamId));
-        selectedPlayers = raw ? JSON.parse(raw) : [];
-        if (!Array.isArray(selectedPlayers)) selectedPlayers = [];
-      } catch {
-        selectedPlayers = [];
-      }
-
-      // ✅ FIX: nettoyer (IDs uniques, existants, max 6)
-      selectedPlayers = [...new Set(selectedPlayers)]
-        .filter(id => players.some(p => p.id === id))
-        .slice(0, MAX_KEEPERS);
-    }
-
-    function saveSelection(teamId){
-      try{
-        localStorage.setItem(selectionKey(teamId), JSON.stringify(selectedPlayers));
-      } catch {}
-    }
-
-    // reset button
-    document.getElementById("resetBtn").addEventListener("click", () => {
-      selectedPlayers = [];
-      saveSelection(currentTeam);
-      updateSelectedPlayersDisplay();
-      renderPlayers();
-      logMessage("Sélection réinitialisée.", "warn", 2500);
-    });
 
     // =========================================================
-    // Priorités (départage)
+    // Storage
+    // =========================================================
+    function selectionKey(teamId){
+      return `keepers_sim_selected_team_${teamId}`;
+    }
+    function loadTeamSelection(teamId){
+      let ids = [];
+      try{
+        const raw = localStorage.getItem(selectionKey(teamId));
+        ids = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(ids)) ids = [];
+      } catch { ids = []; }
+
+      ids = [...new Set(ids)]
+        .filter(id => players.some(p => p.id === id))
+        .slice(0, MAX_KEEPERS);
+
+      selectionsByTeam[teamId] = ids;
+    }
+    function saveTeamSelection(teamId){
+      try{ localStorage.setItem(selectionKey(teamId), JSON.stringify(selectionsByTeam[teamId] || [])); } catch {}
+    }
+    function loadAllSelections(){
+      selectionsByTeam = {};
+      teamsInFile.forEach(t => loadTeamSelection(t));
+    }
+
+    function loadBoardLock(){
+      try{ boardLocked = localStorage.getItem(LOCK_KEY) === "1"; } catch { boardLocked = false; }
+      updateLockButtonUI();
+    }
+    function saveBoardLock(){
+      try{ localStorage.setItem(LOCK_KEY, boardLocked ? "1" : "0"); } catch {}
+    }
+
+    // =========================================================
+    // Priorités départage
     // =========================================================
     function getTimestamp(p){
       const d = p.selDate ? new Date(p.selDate).getTime() : Number.POSITIVE_INFINITY;
       const t = (p.selTimeMin ?? 0) * 60 * 1000;
       return d + t;
     }
-
     function comparePriority(a, b){
       const ad = isDrafted(a) ? 0 : 1;
       const bd = isDrafted(b) ? 0 : 1;
@@ -318,7 +350,7 @@
     }
 
     // =========================================================
-    // Adjusted calculations
+    // Adjusted calculations (par équipe)
     // =========================================================
     function computeAdjustedForIds(selectedIds){
       const picked = selectedIds
@@ -351,46 +383,6 @@
       return adjustedMap;
     }
 
-    function computeAdjustedForSelection(){
-      if (currentTeam == null) return [];
-
-      const picked = selectedPlayers
-        .map(id => players.find(p => p.id === id))
-        .filter(Boolean);
-
-      picked.forEach(p=>{
-        p.keeperBase = computeKeeperRound(p);
-        p.eligible = (p.keeperBase != null);
-      });
-
-      const eligiblePicked = picked.filter(p => p.eligible);
-
-      eligiblePicked.sort((a,b)=>{
-        const ar = a.keeperBase ?? 999;
-        const br = b.keeperBase ?? 999;
-        if (ar !== br) return ar - br;
-        return comparePriority(a,b);
-      });
-
-      const used = {};
-      eligiblePicked.forEach(p=>{
-        let r = p.keeperBase ?? 999;
-        while (used[r]) r += 1;
-        used[r] = true;
-        p.keeperAdjusted = r;
-      });
-
-      eligiblePicked.sort((a,b)=>{
-        if (a.keeperAdjusted !== b.keeperAdjusted) return a.keeperAdjusted - b.keeperAdjusted;
-        return comparePriority(a,b);
-      });
-
-      return eligiblePicked;
-    }
-
-    // =========================================================
-    // Logger “impact”
-    // =========================================================
     function buildConflictMessage(clickedPlayerId, beforeMap, afterMap){
       const clicked = players.find(p => p.id === clickedPlayerId);
       if (!clicked) return null;
@@ -417,113 +409,135 @@
     }
 
     // =========================================================
-    // UI
+    // Board lock UI
+    // =========================================================
+    const lockBoardBtn = document.getElementById("lockBoardBtn");
+    function updateLockButtonUI(){
+      lockBoardBtn.setAttribute("aria-pressed", boardLocked ? "true" : "false");
+      lockBoardBtn.textContent = boardLocked ? "🔒 Board verrouillé" : "🔓 Board déverrouillé";
+      lockBoardBtn.classList.toggle("locked", boardLocked);
+    }
+    lockBoardBtn.addEventListener("click", ()=>{
+      boardLocked = !boardLocked;
+      saveBoardLock();
+      updateLockButtonUI();
+      logMessage(boardLocked ? "Board verrouillé : clic sur une case ne retire plus un keeper." : "Board déverrouillé : clic sur une case retire un keeper.", "warn", 3500);
+      placeKeepersOnBoard();
+    });
+
+    // =========================================================
+    // UI: Tabs / Selected / Players
     // =========================================================
     function renderTabs(){
-      teamTabs.innerHTML = "";
-      teams.forEach(t=>{
-        const count = players.filter(p=>p.team===t).length;
+      teamTabsEl.innerHTML = "";
+      teamsInFile.forEach(t=>{
         const btn = document.createElement("button");
         btn.className = "team-tab" + (t === currentTeam ? " active" : "");
-        btn.textContent = `${teamName(t)} (${count})`;
+        btn.textContent = teamName(t);
         btn.addEventListener("click", ()=>{
           currentTeam = t;
-          loadSelection(currentTeam);
-          renderTabs();
-          updateSelectedPlayersDisplay();
-          renderPlayers();
+          refreshAll();
         });
-        teamTabs.appendChild(btn);
+        teamTabsEl.appendChild(btn);
       });
     }
 
-    function updateSelectedPlayersDisplay(){
-      selectedPlayersList.innerHTML = "";
+    function renderSelected(){
+      teamLabelEl.textContent = teamName(currentTeam);
+      teamLabel2El.textContent = teamName(currentTeam);
 
-      if (currentTeam == null){
-        selectedInfo.textContent = "Choisis une équipe.";
-        return;
-      }
+      selectedPlayersListEl.innerHTML = "";
 
-      const picked = computeAdjustedForSelection();
-      selectedInfo.textContent = `${teamName(currentTeam)} — ${picked.length} / ${MAX_KEEPERS} sélectionnés`;
-      pageTeamNameEl.textContent = teamName(currentTeam);
+      const ids = selectionsByTeam[currentTeam] || [];
+      const adjustedMap = computeAdjustedForIds(ids);
+
+      const picked = ids.map(id => players.find(p=>p.id===id)).filter(Boolean)
+        .map(p => ({ p, adj: adjustedMap.get(p.id) }))
+        .filter(x => x.p.eligible);
+
+      picked.sort((a,b)=>{
+        if (a.adj !== b.adj) return a.adj - b.adj;
+        return comparePriority(a.p, b.p);
+      });
+
+      selectedInfoEl.textContent = `${teamName(currentTeam)} — ${picked.length} / ${MAX_KEEPERS} sélectionnés`;
 
       if (!picked.length){
         const li = document.createElement("li");
         li.className = "empty-li";
-        li.textContent = "Aucun joueur sélectionné.";
-        selectedPlayersList.appendChild(li);
+        li.textContent = "Aucun keeper sélectionné.";
+        selectedPlayersListEl.appendChild(li);
         return;
       }
 
-      picked.forEach(p=>{
+      picked.forEach(({p, adj})=>{
         const li = document.createElement("li");
         li.innerHTML = `
           <span class="sel-name">${escapeHtml(p.name)}</span>
           <span class="sel-badges">
             <span class="badge ${isDrafted(p) ? "b-drafted" : "b-fa"}">${escapeHtml(p.type)}</span>
-            <span class="badge b-keeper">R${p.keeperAdjusted}</span>
+            <span class="badge b-keeper">R${adj}</span>
           </span>
         `;
-        selectedPlayersList.appendChild(li);
+        selectedPlayersListEl.appendChild(li);
       });
     }
 
-    function togglePlayerSelection(player, playerDiv){
+    // scroll + flash
+    function highlightBoardCell(teamId, round){
+      const td = draftBoardEl.querySelector(`td.board-cell[data-team="${teamId}"][data-round="${round}"]`);
+      if (!td) return;
+      td.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      td.classList.remove("flash");
+      void td.offsetWidth;
+      td.classList.add("flash");
+      setTimeout(()=> td.classList.remove("flash"), 1100);
+    }
+
+    function togglePlayer(player){
+      const teamId = player.team;
+      const ids = selectionsByTeam[teamId] || [];
+      const already = ids.includes(player.id);
+
       if (!player.eligible){
         logMessage(`⚠️ ${player.name} n’est pas éligible comme keeper.`, "warn");
         return;
       }
 
-      const isAlreadySelected = selectedPlayers.includes(player.id);
-
-      if (isAlreadySelected){
-        selectedPlayers = selectedPlayers.filter(id => id !== player.id);
-        playerDiv.classList.remove("selected");
-
-        saveSelection(currentTeam);
-        updateSelectedPlayersDisplay();
-        renderPlayers();
+      if (already){
+        selectionsByTeam[teamId] = ids.filter(x => x !== player.id);
+        saveTeamSelection(teamId);
+        refreshAll();
         return;
       }
 
-      if (selectedPlayers.length >= MAX_KEEPERS) {
-        playerDiv.classList.add("shake");
-        setTimeout(()=>playerDiv.classList.remove("shake"), 250);
-        logMessage(`⚠️ Maximum de ${MAX_KEEPERS} keepers atteint. Retire un joueur avant d’en ajouter un autre.`, "warn");
+      if (ids.length >= MAX_KEEPERS){
+        logMessage(`⚠️ ${teamName(teamId)}: maximum de ${MAX_KEEPERS} keepers atteint.`, "warn");
         return;
       }
 
-      // logger impact
-      const beforeMap = computeAdjustedForIds(selectedPlayers);
-      const tentative = [...selectedPlayers, player.id];
+      const beforeMap = computeAdjustedForIds(ids);
+      const tentative = [...ids, player.id];
       const afterMap  = computeAdjustedForIds(tentative);
+
       const msg = buildConflictMessage(player.id, beforeMap, afterMap);
-      if (msg) logMessage(msg, "warn", 5000);
+      if (msg) logMessage(`${teamName(teamId)}: ${msg}`, "warn", 5200);
 
-      selectedPlayers.push(player.id);
-      playerDiv.classList.add("selected");
+      selectionsByTeam[teamId] = tentative;
+      saveTeamSelection(teamId);
 
-      saveSelection(currentTeam);
-      updateSelectedPlayersDisplay();
-      renderPlayers();
+      const finalRound = afterMap.get(player.id);
+      refreshAll();
+      if (finalRound != null) highlightBoardCell(teamId, finalRound);
     }
 
     function renderPlayers(){
-      playerList.innerHTML = "";
-      if (currentTeam == null) return;
+      playerListEl.innerHTML = "";
 
-      players.forEach(p=>{
-        p.keeperBase = computeKeeperRound(p);
-        p.eligible = (p.keeperBase != null);
-        p.keeperAdjusted = null;
-      });
+      const ids = selectionsByTeam[currentTeam] || [];
+      const adjustedMap = computeAdjustedForIds(ids);
 
-      const pickedAdjusted = computeAdjustedForSelection();
-      const adjustedMap = new Map(pickedAdjusted.map(p => [p.id, p.keeperAdjusted]));
-
-      const teamPlayers = players
+      const roster = players
         .filter(p => p.team === currentTeam)
         .sort((a,b)=>{
           const ar = (a.keeperBase == null) ? 999 : a.keeperBase;
@@ -532,56 +546,169 @@
           return a.name.localeCompare(b.name, "fr");
         });
 
-      teamPlayers.forEach(player=>{
-        const isSelected = selectedPlayers.includes(player.id);
-        const adjusted = adjustedMap.get(player.id);
+      roster.forEach(p=>{
+        const selected = ids.includes(p.id);
+        const adj = adjustedMap.get(p.id);
 
         const div = document.createElement("div");
-        div.className = "player" + (player.eligible ? "" : " non-eligible") + (isSelected ? " selected" : "");
+        div.className = "player" +
+          (p.eligible ? "" : " non-eligible") +
+          (selected ? " selected" : "");
 
-        const keeperTxt = player.eligible ? `Keeper: Round ${player.keeperBase}` : "Non-éligible";
+        const keeperTxt = p.eligible ? `Keeper: Round ${p.keeperBase}` : "Non-éligible";
 
-        const adjustLine = (isSelected && player.eligible && adjusted != null)
-          ? `<div class="p-sub p-adjust"><b>Base R${player.keeperBase} → Ajusté R${adjusted}</b></div>`
+        const adjustLine = (selected && p.eligible && adj != null)
+          ? `<div class="p-sub p-adjust"><b>Base R${p.keeperBase} → Ajusté R${adj}</b></div>`
           : "";
 
         let details = "";
-        if (player.eligible){
-          if (isDrafted(player)){
-            details = `Rang draft: ${player.rank}`;
-          } else {
-            details = `Sélection: ${fmtDate(player.selDate)} ${fmtTime(player.selTimeMin)}`;
-          }
+        if (p.eligible){
+          details = isDrafted(p)
+            ? `Rang draft: ${p.rank}`
+            : `Sélection: ${fmtDate(p.selDate)} ${fmtTime(p.selTimeMin)}`;
         } else {
           details = `Après le cutoff (31 août) ou données manquantes`;
         }
 
-        const originTxt = (player.originTeam === "" || player.originTeam == null)
+        const originTxt = (p.originTeam === "" || p.originTeam == null)
           ? ""
-          : ` • Origine: ${teamName(player.originTeam)}`;
+          : ` • Origine: ${teamName(p.originTeam)}`;
 
         div.innerHTML = `
-          <div class="p-title">${escapeHtml(player.name)}</div>
-          <div class="p-sub">${escapeHtml(player.type)} • <b>${escapeHtml(keeperTxt)}</b></div>
+          <div class="p-title">${escapeHtml(p.name)}</div>
+          <div class="p-sub">${escapeHtml(p.type)} • <b>${escapeHtml(keeperTxt)}</b></div>
           ${adjustLine}
           <div class="p-sub p-muted">${escapeHtml(details)}${escapeHtml(originTxt)}</div>
         `;
 
-        div.addEventListener("click", ()=>{
-          if (!player.eligible){
-            logMessage(`⚠️ ${player.name} n’est pas éligible comme keeper (cutoff 31 août).`, "warn");
-            return;
-          }
-          togglePlayerSelection(player, div);
-        });
-
-        playerList.appendChild(div);
+        div.addEventListener("click", ()=>togglePlayer(p));
+        playerListEl.appendChild(div);
       });
     }
 
+    // =========================================================
+    // Draft Board
+    // =========================================================
+    function buildEmptyBoard(){
+      draftBoardEl.innerHTML = "";
+
+      const thead = document.createElement("thead");
+      const hr = document.createElement("tr");
+
+      const th0 = document.createElement("th");
+      th0.className = "sticky-col";
+      th0.textContent = "Round";
+      hr.appendChild(th0);
+
+      boardTeams.forEach(t=>{
+        const th = document.createElement("th");
+        th.textContent = teamName(t);
+        hr.appendChild(th);
+      });
+
+      thead.appendChild(hr);
+      draftBoardEl.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      for (let r=1; r<=ROUNDS; r++){
+        const tr = document.createElement("tr");
+
+        const tdRound = document.createElement("td");
+        tdRound.className = "sticky-col round-cell";
+        tdRound.textContent = `R${r}`;
+        tr.appendChild(tdRound);
+
+        boardTeams.forEach(t=>{
+          const td = document.createElement("td");
+          td.className = "board-cell";
+          td.dataset.team = t;
+          td.dataset.round = r;
+          td.innerHTML = `<div class="cell-empty">—</div>`;
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      }
+      draftBoardEl.appendChild(tbody);
+    }
+
+    function placeKeepersOnBoard(){
+      draftBoardEl.querySelectorAll("td.board-cell").forEach(td=>{
+        td.classList.remove("cell-filled", "cell-drafted", "cell-fa");
+        td.innerHTML = `<div class="cell-empty">—</div>`;
+        td.onclick = null;
+      });
+
+      boardTeams.forEach(teamId=>{
+        const ids = selectionsByTeam[teamId] || [];
+        const adjMap = computeAdjustedForIds(ids);
+
+        ids.forEach(id=>{
+          const p = players.find(x=>x.id===id);
+          if (!p || !p.eligible) return;
+
+          const round = adjMap.get(id);
+          if (!round || round < 1 || round > ROUNDS) return;
+
+          const td = draftBoardEl.querySelector(`td.board-cell[data-team="${teamId}"][data-round="${round}"]`);
+          if (!td) return;
+
+          td.classList.add("cell-filled");
+          td.classList.add(isDrafted(p) ? "cell-drafted" : "cell-fa");
+
+          td.innerHTML = `
+            <div class="cell-player">
+              <div class="cell-name">${escapeHtml(p.name)}</div>
+              <div class="cell-meta">${isDrafted(p) ? "Repêché" : "Agent libre"} • Base R${p.keeperBase}</div>
+              <div class="cell-remove">${boardLocked ? "Board verrouillé" : "Cliquer pour retirer"}</div>
+            </div>
+          `;
+
+          td.onclick = () => {
+            if (boardLocked){
+              logMessage("🔒 Board verrouillé : déverrouille pour retirer un keeper.", "warn", 3000);
+              return;
+            }
+            selectionsByTeam[teamId] = (selectionsByTeam[teamId] || []).filter(x => x !== p.id);
+            saveTeamSelection(teamId);
+            refreshAll();
+          };
+        });
+      });
+    }
+
+    // =========================================================
+    // Reset buttons
+    // =========================================================
+    document.getElementById("resetTeamBtn").addEventListener("click", ()=>{
+      selectionsByTeam[currentTeam] = [];
+      saveTeamSelection(currentTeam);
+      logMessage(`${teamName(currentTeam)}: sélection réinitialisée.`, "warn", 2500);
+      refreshAll();
+    });
+
+    document.getElementById("resetAllBtn").addEventListener("click", ()=>{
+      teamsInFile.forEach(t=>{
+        selectionsByTeam[t] = [];
+        saveTeamSelection(t);
+      });
+      logMessage("Toutes les sélections ont été réinitialisées.", "warn", 2500);
+      refreshAll();
+    });
+
+    function refreshAll(){
+      renderTabs();
+      renderSelected();
+      renderPlayers();
+      placeKeepersOnBoard();
+    }
+
+    // =========================================================
+    // Load excel
+    // =========================================================
     async function loadExcelFromRepo(){
       try{
-        selectedInfo.textContent = "Chargement du fichier…";
+        selectedInfoEl.textContent = "Chargement du fichier…";
 
         const res = await fetch(EXCEL_PATH);
         if (!res.ok) throw new Error(`fetch failed ${res.status}`);
@@ -597,17 +724,16 @@
           if (p) players.push(p);
         }
 
-        currentTeam = null;
         rebuildTeams();
-        renderTabs();
+        loadAllSelections();
+        loadBoardLock();
 
-        loadSelection(currentTeam);
-        updateSelectedPlayersDisplay();
-        renderPlayers();
+        buildEmptyBoard();
+        refreshAll();
 
       } catch (e){
-        selectedInfo.textContent = "Erreur: impossible de charger le fichier Excel.";
-        playerList.innerHTML = `
+        selectedInfoEl.textContent = "Erreur: impossible de charger le fichier Excel.";
+        playerListEl.innerHTML = `
           <div class="player non-eligible">
             Impossible de charger <b>${escapeHtml(EXCEL_PATH)}</b>.<br>
             Vérifie que le fichier est dans le repo (même dossier) et que le nom est EXACT (espaces inclus).
@@ -623,4 +749,3 @@
   </script>
 </body>
 </html>
-

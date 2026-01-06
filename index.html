@@ -1,47 +1,65 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guide du keeper 2025 de la ligue de la Basse-Ville</title>
-    <link rel="stylesheet" href="styleIndex.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keeper — Pool Baseball</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-    <header>
-        <h1>Bienvenue sur la page d'accueil du repêchage de la ligue de Basse-ville 2025</h1>
-    </header>
+<body class="home">
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
 
-    <div class="team-container">
-        <div class="team-card" onclick="location.href='citadelle.html';">
-            <h3>Les Citadelles de Saint-Honoré</h3>
-        </div>
-        <div class="team-card" onclick="location.href='coco.html';">
-            <h3>Le Coco Laboy</h3>
-        </div>
-        <div class="team-card" onclick="location.href='dreamers.html';">
-            <h3>Les Dreamers de Tring-Jonction</h3>
-        </div>
-        <div class="team-card" onclick="location.href='garnotte.html';">
-            <h3>Les Garnottes de L'Anse-De-Roche</h3>
-        </div>
-        <div class="team-card" onclick="location.href='limoilou.html';">
-            <h3>Le Shield-Maiden de Limoilou</h3>
-        </div>
-        <div class="team-card" onclick="location.href='croco.html';">
-            <h3>Le Crocodile Joyeux de L'Arizona</h3>
-        </div>
-        <div class="team-card" onclick="location.href='pape.html';">
-            <h3>Les Papetiers d'la Whitebirch</h3>
-        </div>
-        <div class="team-card" onclick="location.href='bpt.html';">
-            <h3>Le Ball-Four de Bpt-Charlevoix</h3>
-        </div>
-        <div class="team-card" onclick="location.href='deluge.html';">
-            <h3>Le Déluge du Saguenay</h3>
-        </div>
-        <div class="team-card" onclick="location.href='monarch.html';">
-            <h3>Les Monarchs de Prince Edward</h3>
-        </div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">K</div>
+      <div class="brand-text">
+        <div class="brand-title">Keeper</div>
+        <div class="brand-subtitle">Pool Baseball — valeurs de keepers</div>
+      </div>
     </div>
+
+    <div class="topbar-actions">
+      <a class="pill" href="dreamers.html">Mode Équipe</a>
+      <a class="pill" href="simulation.html">Simulation Draft</a>
+    </div>
+  </header>
+
+  <main class="home-wrap">
+    <section class="hero-card">
+      <div class="hero-left">
+        <p style="margin:0; color: var(--muted);">
+          Choisis un mode pour commencer.
+        </p>
+
+       
+    </section>
+
+    <section class="home-panels" style="grid-template-columns: 1fr 1fr;">
+      <div class="panel-card">
+        <h2>Mode Équipe</h2>
+        <p>
+          Onglets d’équipes, roster complet, sélection de 6 keepers,
+          et affichage trié par round ajusté.
+        </p>
+        <a class="btn-secondary" href="dreamers.html">Ouvrir</a>
+      </div>
+
+      <div class="panel-card">
+        <h2>Simulation Draft</h2>
+        <p>
+          Sélection pour toutes les équipes et placement en direct dans un board.
+          Clique une case pour retirer (ou verrouille le board).
+        </p>
+        <a class="btn-secondary" href="simulation.html">Ouvrir</a>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Keeper — Pool Baseball</span>
+      <span class="muted">•</span>
+      <span class="muted">Made for chaos & fun</span>
+    </footer>
+  </main>
 </body>
 </html>
